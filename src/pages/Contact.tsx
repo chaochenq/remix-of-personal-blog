@@ -3,6 +3,14 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const contactSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be under 100 characters"),
+  email: z.string().trim().email("Please enter a valid email").max(255, "Email must be under 255 characters"),
+  subject: z.string().trim().min(1, "Subject is required").max(200, "Subject must be under 200 characters"),
+  message: z.string().trim().min(1, "Message is required").max(2000, "Message must be under 2000 characters"),
+});
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -11,18 +19,34 @@ const Contact = () => {
     subject: "",
     message: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Message sent! We'll get back to you soon.");
+    const result = contactSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    toast.info("Thanks for your message! This form is not yet connected to a backend.");
     setFormData({ name: "", email: "", subject: "", message: "" });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   return (
@@ -44,8 +68,8 @@ const Contact = () => {
           {/* Contact Form */}
           <div className="rounded-2xl bg-card p-8">
             <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
-        <form onSubmit={handleSubmit} className="space-y-6 animate-slide-up stagger-2">
-          <div>
+            <form onSubmit={handleSubmit} className="space-y-6 animate-slide-up stagger-2" noValidate>
+              <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2">
                   Name
                 </label>
@@ -55,10 +79,11 @@ const Contact = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  required
+                  maxLength={100}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Your name"
                 />
+                {errors.name && <p className="text-sm text-destructive mt-1">{errors.name}</p>}
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-2">
@@ -70,10 +95,11 @@ const Contact = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  required
+                  maxLength={255}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="your.email@example.com"
                 />
+                {errors.email && <p className="text-sm text-destructive mt-1">{errors.email}</p>}
               </div>
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium mb-2">
@@ -85,10 +111,11 @@ const Contact = () => {
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  required
+                  maxLength={200}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="What's this about?"
                 />
+                {errors.subject && <p className="text-sm text-destructive mt-1">{errors.subject}</p>}
               </div>
               <div>
                 <label htmlFor="message" className="block text-sm font-medium mb-2">
@@ -99,11 +126,12 @@ const Contact = () => {
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
-                  required
+                  maxLength={2000}
                   rows={6}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   placeholder="Tell us what's on your mind..."
                 />
+                {errors.message && <p className="text-sm text-destructive mt-1">{errors.message}</p>}
               </div>
               <Button 
                 type="submit"
